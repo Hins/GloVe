@@ -288,6 +288,7 @@ int get_cooccurrence() {
     real *bigram_table, r;
     HASHREC *htmp, **vocab_hash = inithashtable();
     CREC *cr = malloc(sizeof(CREC) * (overflow_length + 1));
+    // [xtpan] history saved context word's index
     history = malloc(sizeof(long long) * window_size);
     
     fprintf(stderr, "COUNTING COOCCURRENCES\n");
@@ -314,6 +315,9 @@ int get_cooccurrence() {
         fprintf(stderr, "Couldn't allocate memory!");
         return 1;
     }
+    // [xtpan] lookup[i] - look[i-1] represented term i's bigram scale
+    // [xtpan] truncated lookup: if index * vocab_size is more than max_product,
+    // [xtpan] then latter terms' lookup value are the same as the first term whose index * vocab_size is more than max_product
     lookup[0] = 1;
     for (a = 1; a <= vocab_size; a++) {
         if ((lookup[a] = max_product / a) < vocab_size) lookup[a] += lookup[a-1];
@@ -346,12 +350,13 @@ int get_cooccurrence() {
             ind = 0;
         }
         flag = get_word(str, fid);
-        if (feof(fid)) break;
+        if (feof(fid)) break;  // reading ends
         if (flag == 1) {j = 0; continue;} // Newline, reset line index (j)
         counter++;
         if ((counter%100000) == 0) if (verbose > 1) fprintf(stderr,"\033[19G%lld",counter);
         htmp = hashsearch(vocab_hash, str);
         if (htmp == NULL) continue; // Skip out-of-vocabulary words
+        // [xtpan] id meant term's index, hashinsert() assigned index by j
         w2 = htmp->id; // Target word (frequency rank)
         for (k = j - 1; k >= ( (j > window_size) ? j - window_size : 0 ); k--) { // Iterate over all words to the left of target word, but not past beginning of line
             w1 = history[k % window_size]; // Context word (frequency rank)
@@ -387,6 +392,7 @@ int get_cooccurrence() {
     fid = fopen(filename,"w");
     j = 1e6;
     for (x = 1; x <= vocab_size; x++) {
+        // [xtpan] calculate weighted function f(X_ij), smooth
         if ( (long long) (0.75*log(vocab_size / x)) < j) {j = (long long) (0.75*log(vocab_size / x)); if (verbose > 1) fprintf(stderr,".");} // log's to make it look (sort of) pretty
         for (y = 1; y <= (lookup[x] - lookup[x-1]); y++) {
             if ((r = bigram_table[lookup[x-1] - 2 + y]) != 0) {

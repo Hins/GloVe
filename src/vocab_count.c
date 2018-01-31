@@ -93,8 +93,10 @@ HASHREC ** inithashtable() {
 void hashinsert(HASHREC **ht, char *w) {
     HASHREC	*htmp, *hprv;
     unsigned int hval = HASHFN(w, TSIZE, SEED);
-    
+
+    // 链式Hash，寻找插入位置
     for (hprv = NULL, htmp = ht[hval]; htmp != NULL && scmp(htmp->word, w) != 0; hprv = htmp, htmp = htmp->next);
+    // Hash new point
     if (htmp == NULL) {
         htmp = (HASHREC *) malloc( sizeof(HASHREC) );
         htmp->word = (char *) malloc( strlen(w) + 1 );
